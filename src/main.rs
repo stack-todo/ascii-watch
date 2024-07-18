@@ -3,6 +3,8 @@
 // date  : 2024-07-18
 // note  : a simple blinking stopwatch* (stopping is C-c for now)
 
+use std::cmp::min;
+use std::thread;
 use std::time::{Duration, Instant};
 
 // blinking mode for the colon seperating the HH:MM:SS,
@@ -30,14 +32,14 @@ fn main() {
 
     loop {
         let now = Instant::now();
-        let elapsed_start = start.elapsed();
+        let elapsed_start = start.elapsed().as_secs();
 
-        let seconds = (elapsed_start.as_secs()) % 60;
-        let minutes = (seconds / 60) % 60;
-        let hours = (minutes / 60) % 24;
+        let secns = (elapsed_start) % 60;
+        let mints = ((elapsed_start) / 60) % 60;
+        let hours = ((elapsed_start / 60) / 60) % 24;
 
-        let with_colon = format!("{:02?}:{:02?}:{:02?}", hours, minutes, seconds);
-        let wout_colon = format!("{:02?} {:02?} {:02?}", hours, minutes, seconds);
+        let with_colon = format!("{:02?}:{:02?}:{:02?}", hours, mints, secns);
+        let wout_colon = format!("{:02?} {:02?} {:02?}", hours, mints, secns);
 
         // printing/drawing the time
         let elapsed_last_print = now - last_print;
@@ -68,5 +70,6 @@ fn main() {
                 } //_ => panic!()
             }
         }
+        thread::sleep(min(refresh_chmod, refresh_print) / 2);
     }
 }
