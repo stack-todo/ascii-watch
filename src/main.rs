@@ -1,75 +1,82 @@
 // main.rs
 // author: vishalpaudel
-// date  : 2024-07-18
-// note  : a simple blinking stopwatch* (stopping is C-c for now)
+// date  : 2024-07-20
+// note  : A simple stdout ~stop~watch
 
-use std::cmp::min;
+use std::io::{self, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 
-// blinking mode for the colon seperating the HH:MM:SS,
-// may have additional modes (Grey) depending on the format of print/draw;
+struct Watch {
+    secns: u64,
+    mints: u64,
+    hours: u64,
+}
+
+#[derive(Debug)]
 enum BlinkingMode {
     Show,
     Hide,
 }
 
 fn main() {
-    // print/drawing triggered in these times;
-    let refresh_print_milliseconds = 100;
-    let refresh_print = Duration::from_millis(refresh_print_milliseconds);
+    let mut watch = Watch {
+        secns: 0,
+        mints: 0,
+        hours: 0,
+    };
 
-    // mode change of the colon triggered;
-    let refresh_chmod_milliseconds = 500;
-    let refresh_chmod = Duration::from_millis(refresh_chmod_milliseconds);
-
-    let start = Instant::now();
-
-    let mut last_print = start;
-    let mut last_chmod = start;
-
-    let mut blinking_mode = BlinkingMode::Show;
+    let start: Instant = Instant::now();
+    let mut mode: BlinkingMode = BlinkingMode::Show;
 
     loop {
-        let now = Instant::now();
-        let elapsed_start = start.elapsed().as_secs();
+        update_watch(start, &mut watch);
+        update_blinking_mode(&mut mode);
 
-        let secns = (elapsed_start) % 60;
-        let mints = ((elapsed_start) / 60) % 60;
-        let hours = ((elapsed_start / 60) / 60) % 24;
-
-        let with_colon = format!("{:02?}:{:02?}:{:02?}", hours, mints, secns);
-        let wout_colon = format!("{:02?} {:02?} {:02?}", hours, mints, secns);
-
-        // printing/drawing the time
-        let elapsed_last_print = now - last_print;
-        if elapsed_last_print >= refresh_print {
-            match blinking_mode {
-                BlinkingMode::Show => {
-                    println!("{}", with_colon);
-                    last_print = Instant::now()
-                }
-                BlinkingMode::Hide => {
-                    println!("{}", wout_colon);
-                    last_print = Instant::now()
-                } //_ => panic!(),
-            }
-        }
-
-        // changing (flipping) blinking mode
-        let elapsed_colon_chmod = now - last_chmod;
-        if elapsed_colon_chmod >= refresh_chmod {
-            match blinking_mode {
-                BlinkingMode::Show => {
-                    blinking_mode = BlinkingMode::Hide;
-                    last_chmod = Instant::now();
-                }
-                BlinkingMode::Hide => {
-                    blinking_mode = BlinkingMode::Show;
-                    last_chmod = Instant::now();
-                } //_ => panic!()
-            }
-        }
-        thread::sleep(min(refresh_chmod, refresh_print) / 2);
+        draw_watch(&mut watch, &mode);
+        thread::sleep(Duration::from_millis(500));
     }
+}
+
+fn update_watch(start: Instant, watch: &mut Watch) {
+    // watch.secns += 1;
+    let elapsed_start = start.elapsed().as_secs();
+
+    let secns: u64 = (elapsed_start) % 60;
+    let mints: u64 = ((elapsed_start) / 60) % 60;
+    let hours: u64 = ((elapsed_start / 60) / 60) % 24;
+
+    watch.secns = secns;
+    watch.mints = mints;
+    watch.hours = hours;
+}
+
+fn format_watch(watch: &Watch, mode: &BlinkingMode) -> String {
+    let with_colon: String = format!(
+        "{:02?}:{:02?}:{:02?}",
+        watch.hours, watch.mints, watch.secns
+    );
+    let wout_colon: String = format!(
+        "{:02?} {:02?} {:02?}",
+        watch.hours, watch.mints, watch.secns
+    );
+
+    return match mode {
+        BlinkingMode::Show => with_colon,
+        BlinkingMode::Hide => wout_colon,
+    };
+}
+
+fn draw_watch(watch: &Watch, mode: &BlinkingMode) {
+    let formatted_time: String = format_watch(watch, mode);
+
+    print!("\r\x1B[K{}", formatted_time);
+    io::stdout().flush().unwrap();
+}
+
+fn update_blinking_mode(blinking_mode: &mut BlinkingMode) {
+    *blinking_mode = match blinking_mode {
+        BlinkingMode::Show => BlinkingMode::Hide,
+        BlinkingMode::Hide => BlinkingMode::Show,
+    };
 }
