@@ -7,51 +7,51 @@ use std::io::{self, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[derive(Debug, Clone, Copy)]
 struct Watch {
-    secns: u64,
-    mints: u64,
-    hours: u64,
+    secns: u8,
+    mints: u8,
+    hours: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum BlinkingMode {
     Show,
     Hide,
 }
 
 fn main() {
-    let mut watch = Watch {
-        secns: 0,
-        mints: 0,
-        hours: 0,
-    };
-
+    let mut watch;
     let start: Instant = Instant::now();
     let mut mode: BlinkingMode = BlinkingMode::Show;
-
     loop {
-        update_watch(start, &mut watch);
-        update_blinking_mode(&mut mode);
-
-        draw_watch(&mut watch, &mode);
+        watch = return_updated_watch(start);
+        mode = return_updated_mode(mode);
+        draw_watch(watch, mode);
         thread::sleep(Duration::from_millis(500));
     }
 }
 
-fn update_watch(start: Instant, watch: &mut Watch) {
-    // watch.secns += 1;
+fn return_updated_watch(start: Instant) -> Watch {
     let elapsed_start = start.elapsed().as_secs();
-
-    let secns: u64 = (elapsed_start) % 60;
-    let mints: u64 = ((elapsed_start) / 60) % 60;
-    let hours: u64 = ((elapsed_start / 60) / 60) % 24;
-
-    watch.secns = secns;
-    watch.mints = mints;
-    watch.hours = hours;
+    let secns: u8 = ((elapsed_start) % 60) as u8;
+    let mints: u8 = (((elapsed_start) / 60) % 60) as u8;
+    let hours: u8 = (((elapsed_start / 60) / 60) % 24) as u8;
+    return Watch {
+        secns,
+        mints,
+        hours,
+    };
 }
 
-fn format_watch(watch: &Watch, mode: &BlinkingMode) -> String {
+fn return_updated_mode(blinking_mode: BlinkingMode) -> BlinkingMode {
+    return match blinking_mode {
+        BlinkingMode::Show => BlinkingMode::Hide,
+        BlinkingMode::Hide => BlinkingMode::Show,
+    };
+}
+
+fn format_watch(watch: Watch, mode: BlinkingMode) -> String {
     let with_colon: String = format!(
         "{:02?}:{:02?}:{:02?}",
         watch.hours, watch.mints, watch.secns
@@ -60,23 +60,14 @@ fn format_watch(watch: &Watch, mode: &BlinkingMode) -> String {
         "{:02?} {:02?} {:02?}",
         watch.hours, watch.mints, watch.secns
     );
-
     return match mode {
         BlinkingMode::Show => with_colon,
         BlinkingMode::Hide => wout_colon,
     };
 }
 
-fn draw_watch(watch: &Watch, mode: &BlinkingMode) {
+fn draw_watch(watch: Watch, mode: BlinkingMode) {
     let formatted_time: String = format_watch(watch, mode);
-
     print!("\r\x1B[K{}", formatted_time);
     io::stdout().flush().unwrap();
-}
-
-fn update_blinking_mode(blinking_mode: &mut BlinkingMode) {
-    *blinking_mode = match blinking_mode {
-        BlinkingMode::Show => BlinkingMode::Hide,
-        BlinkingMode::Hide => BlinkingMode::Show,
-    };
 }
